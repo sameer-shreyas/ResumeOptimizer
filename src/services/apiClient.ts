@@ -1,5 +1,5 @@
 // API client for backend communication
-const API_BASE_URL = import.meta.env.VITE_API_URL || 'http://localhost:5000';
+const API_BASE_URL = import.meta.env.VITE_API_URL || 'https://localhost:59919';
 
 export interface ApiResponse<T> {
   data?: T;
