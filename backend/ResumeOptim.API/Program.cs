@@ -3,7 +3,6 @@ using ResumeOptim.API.Data;
 using ResumeOptim.API.Services;
 using ResumeOptim.API.Configuration;
 using Hangfire;
-using Hangfire.SqlServer;
 using Serilog;
 using FluentValidation;
 using System.Reflection;
