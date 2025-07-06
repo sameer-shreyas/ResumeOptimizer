@@ -234,5 +234,3 @@ For support and questions:
 - Review the API documentation at `/swagger`
 
 ---
-
-**ResumeOptim.AI** - Empowering job seekers with AI-driven resume optimization.
