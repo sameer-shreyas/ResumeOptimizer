@@ -32,14 +32,13 @@ public class AnalysisController : ControllerBase
     {
         try
         {
-            // Validate request
+            // Validate request and file
             var validationResult = await _validator.ValidateAsync(request);
             if (!validationResult.IsValid)
             {
                 return BadRequest(validationResult.Errors);
             }
 
-            // Validate file
             var fileValidation = await _fileProcessingService.ValidateFileAsync(request.ResumeFile);
             if (!fileValidation.IsValid)
             {
@@ -49,11 +48,22 @@ public class AnalysisController : ControllerBase
             // Generate session ID if not provided
             var sessionId = request.SessionId ?? Guid.NewGuid().ToString();
 
-            // Queue background job for processing
-            var jobId = BackgroundJob.Enqueue<IAnalysisService>(
-                service => service.ProcessAnalysisAsync(request.ResumeFile, request.JobDescription, sessionId));
+            // Prepare file data for background processing
+            var fileData = new FileProcessingData
+            {
+                FileName = request.ResumeFile.FileName,
+                ContentType = request.ResumeFile.ContentType,
+                Content = await GetFileBytes(request.ResumeFile),
+                SessionId = sessionId,
+                JobDescription = request.JobDescription
+            };
 
-            _logger.LogInformation("Analysis job queued with ID: {JobId} for session: {SessionId}", jobId, sessionId);
+            // Queue background job with serializable data
+            var jobId = BackgroundJob.Enqueue<IAnalysisService>(
+                service => service.ProcessAnalysisAsync(fileData));
+
+            _logger.LogInformation("Analysis job queued with ID: {JobId} for session: {SessionId}",
+                jobId, sessionId);
 
             return Ok(new { jobId, sessionId, message = "Analysis started. Use the job ID to check status." });
         }
@@ -64,23 +74,43 @@ public class AnalysisController : ControllerBase
         }
     }
 
+    private async Task<byte[]> GetFileBytes(IFormFile file)
+    {
+        using (var memoryStream = new MemoryStream())
+        {
+            await file.CopyToAsync(memoryStream);
+            return memoryStream.ToArray();
+        }
+    }
     [HttpGet("status/{jobId}")]
     public IActionResult GetJobStatus(string jobId)
     {
         try
         {
-            var jobDetails = JobStorage.Current.GetConnection().GetJobData(jobId);
-            
-            if (jobDetails == null)
+            var jobData = JobStorage.Current.GetConnection().GetJobData(jobId);
+            if (jobData == null)
             {
                 return NotFound(new { error = "Job not found" });
             }
 
-            return Ok(new 
-            { 
+            // Map Hangfire states to client-expected values
+            string state = jobData.State?.ToLower();
+            string clientState = state switch
+            {
+                "succeeded" => "succeeded",
+                "failed" => "failed",
+                "deleted" => "failed",    // Terminal state
+                "expired" => "failed",    // Terminal state
+                "processing" => "processing",
+                "enqueued" => "enqueued",
+                _ => "processing"         // Default for other states
+            };
+
+            return Ok(new
+            {
                 jobId,
-                state = jobDetails.State,
-                createdAt = jobDetails.CreatedAt
+                state = clientState,
+                createdAt = jobData.CreatedAt
             });
         }
         catch (Exception ex)
@@ -89,7 +119,6 @@ public class AnalysisController : ControllerBase
             return StatusCode(500, new { error = "Error retrieving job status" });
         }
     }
-
     [HttpGet("report/{reportId:guid}")]
     public async Task<IActionResult> GetReport(Guid reportId)
     {
