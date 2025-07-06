@@ -1,4 +1,5 @@
 using System.ComponentModel.DataAnnotations;
+using System.Text.Json.Serialization;
 
 namespace ResumeOptim.API.DTOs;
 
@@ -37,9 +38,14 @@ public class SuggestionDto
 
 public class AIAnalysisRequest
 {
-    public string ResumeText { get; set; } = string.Empty;
-    public string JobDescription { get; set; } = string.Empty;
-    public string AnalysisType { get; set; } = "full";
+    [JsonPropertyName("resume_text")]
+    public string ResumeText { get; set; }
+
+    [JsonPropertyName("job_description")]
+    public string JobDescription { get; set; }
+
+    [JsonPropertyName("analysis_type")]
+    public string AnalysisType { get; set; }
 }
 
 public class AIAnalysisResponse

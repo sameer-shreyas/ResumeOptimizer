@@ -37,16 +37,16 @@ app.add_middleware(
 # Request/Response Models
 class SuggestionModel(BaseModel):
     id: str
-    type: str = Field(..., regex="^(critical|warning|improvement)$")
+    type: str = Field(..., pattern="^(critical|warning|improvement)$")
     title: str
     description: str
     example: Optional[str] = None
-    impact: str = Field(..., regex="^(high|medium|low)$")
+    impact: str = Field(..., pattern="^(high|medium|low)$")
 
 class AnalysisRequest(BaseModel):
     resume_text: str = Field(..., min_length=10, max_length=50000)
     job_description: str = Field(..., min_length=10, max_length=10000)
-    analysis_type: str = Field(default="full", regex="^(full|quick|keywords_only)$")
+    analysis_type: str = Field(default="full", pattern="^(full|quick|keywords_only)$")
 
 class AnalysisResponse(BaseModel):
     score: int = Field(..., ge=0, le=100)
