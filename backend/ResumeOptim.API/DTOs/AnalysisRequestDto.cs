@@ -56,3 +56,54 @@ public class AIAnalysisResponse
     public List<string> MissingKeywords { get; set; } = new();
     public Dictionary<string, object> Metadata { get; set; } = new();
 }
+
+public class CerebrasRequest
+{
+    [JsonPropertyName("model")]
+    public string Model { get; set; } = "llama3.1-70b";
+
+    [JsonPropertyName("messages")]
+    public List<ChatMessage> Messages { get; set; } = new();
+
+    [JsonPropertyName("max_tokens")]
+    public int MaxTokens { get; set; } = 4000;
+
+    [JsonPropertyName("temperature")]
+    public float Temperature { get; set; } = 0.3f;
+
+    [JsonPropertyName("response_format")]
+    public ResponseFormat Format { get; set; } = new();
+}
+
+public class ResponseFormat
+{
+    [JsonPropertyName("type")]
+    public string Type { get; set; } = "json_object";
+}
+
+public class ChatMessage
+{
+    [JsonPropertyName("role")]
+    public string Role { get; set; }
+
+    [JsonPropertyName("content")]
+    public string Content { get; set; }
+}
+
+public class CerebrasResponse
+{
+    [JsonPropertyName("choices")]
+    public List<Choice> Choices { get; set; }
+}
+
+public class Choice
+{
+    [JsonPropertyName("message")]
+    public Message Message { get; set; }
+}
+
+public class Message
+{
+    [JsonPropertyName("content")]
+    public string Content { get; set; } // Contains JSON string
+}

@@ -4,5 +4,5 @@ namespace ResumeOptim.API.Services;
 
 public interface IAIAnalysisClient
 {
-    Task<AIAnalysisResponse> AnalyzeAsync(AIAnalysisRequest request);
+    Task<AIAnalysisResponse> AnalyzeWithCerebras(AIAnalysisRequest request);
 }

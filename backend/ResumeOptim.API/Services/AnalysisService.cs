@@ -80,7 +80,7 @@ public class AnalysisService : IAnalysisService
                 AnalysisType = "full"
             };
 
-            var aiResponse = await _aiAnalysisClient.AnalyzeAsync(aiRequest);
+            var aiResponse = await _aiAnalysisClient.AnalyzeWithCerebras(aiRequest);
 
             // 6. Cache job description keywords if not cached
             if (cachedKeywords == null && aiResponse.KeywordMatches.Any())

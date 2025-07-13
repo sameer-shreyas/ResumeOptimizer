@@ -41,3 +41,10 @@ public class UserSession
     public DateTime CreatedAt { get; set; }
     public DateTime? LastActivity { get; set; }
 }
+
+public class CerebrasOptions
+{
+    public const string Cerebras = "Cerebras";
+    public string BaseUrl { get; set; } = string.Empty;
+    public string ApiToken { get; set; } = string.Empty;
+}

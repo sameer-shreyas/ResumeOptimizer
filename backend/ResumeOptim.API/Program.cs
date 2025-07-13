@@ -1,10 +1,11 @@
-using Microsoft.EntityFrameworkCore;
-using ResumeOptim.API.Data;
-using ResumeOptim.API.Services;
-using ResumeOptim.API.Configuration;
-using Hangfire;
-using Serilog;
 using FluentValidation;
+using Hangfire;
+using Microsoft.EntityFrameworkCore;
+using ResumeOptim.API.Configuration;
+using ResumeOptim.API.Data;
+using ResumeOptim.API.Models;
+using ResumeOptim.API.Services;
+using Serilog;
 using System.Reflection;
 
 var builder = WebApplication.CreateBuilder(args);
@@ -54,9 +55,10 @@ builder.Services.AddScoped<IBlobStorageService, BlobStorageService>();
 builder.Services.AddScoped<ICacheService, CacheService>();
 builder.Services.AddHttpClient<IAIAnalysisClient, AIAnalysisClient>(client =>
 {
-    client.BaseAddress = new Uri(builder.Configuration["AIService:BaseUrl"] ?? "http://localhost:8000");
     client.Timeout = TimeSpan.FromMinutes(5);
 });
+builder.Services.Configure<CerebrasOptions>(
+    builder.Configuration.GetSection(CerebrasOptions.Cerebras));
 
 // Add FluentValidation
 builder.Services.AddValidatorsFromAssembly(Assembly.GetExecutingAssembly());
