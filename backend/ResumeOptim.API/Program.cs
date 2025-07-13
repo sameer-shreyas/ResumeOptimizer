@@ -20,16 +20,23 @@ Log.Logger = new LoggerConfiguration()
 
 builder.Host.UseSerilog();
 
-// Add services to the container
+// Get Render's dynamic PORT or default to 5000 locally
+var port = Environment.GetEnvironmentVariable("PORT") ?? "5000";
+builder.WebHost.ConfigureKestrel(options =>
+{
+    options.ListenAnyIP(Int32.Parse(port));
+});
+
+// Add services
 builder.Services.AddControllers();
 builder.Services.AddEndpointsApiExplorer();
 builder.Services.AddSwaggerGen();
 
-// Configure Entity Framework
+// EF Core
 builder.Services.AddDbContext<ApplicationDbContext>(options =>
     options.UseSqlServer(builder.Configuration.GetConnectionString("DefaultConnection")));
 
-// Configure Hangfire
+// Hangfire
 builder.Services.AddHangfire(configuration => configuration
     .SetDataCompatibilityLevel(CompatibilityLevel.Version_180)
     .UseSimpleAssemblyNameTypeSerializer()
@@ -38,13 +45,13 @@ builder.Services.AddHangfire(configuration => configuration
 
 builder.Services.AddHangfireServer();
 
-// Configure Redis
+// Redis (optional, handle errors if not available)
 builder.Services.AddStackExchangeRedisCache(options =>
 {
     options.Configuration = builder.Configuration.GetConnectionString("Redis");
 });
 
-// Configure Azure Blob Storage
+// Azure Blob Storage
 builder.Services.Configure<AzureBlobStorageOptions>(
     builder.Configuration.GetSection("AzureBlobStorage"));
 
@@ -53,6 +60,7 @@ builder.Services.AddScoped<IFileProcessingService, FileProcessingService>();
 builder.Services.AddScoped<IAnalysisService, AnalysisService>();
 builder.Services.AddScoped<IBlobStorageService, BlobStorageService>();
 builder.Services.AddScoped<ICacheService, CacheService>();
+
 builder.Services.AddHttpClient<IAIAnalysisClient, AIAnalysisClient>(client =>
 {
     client.Timeout = TimeSpan.FromMinutes(5);
@@ -60,10 +68,10 @@ builder.Services.AddHttpClient<IAIAnalysisClient, AIAnalysisClient>(client =>
 builder.Services.Configure<CerebrasOptions>(
     builder.Configuration.GetSection(CerebrasOptions.Cerebras));
 
-// Add FluentValidation
+// FluentValidation
 builder.Services.AddValidatorsFromAssembly(Assembly.GetExecutingAssembly());
 
-// Configure CORS
+// CORS
 builder.Services.AddCors(options =>
 {
     options.AddPolicy("AllowReactApp", policy =>
@@ -77,18 +85,20 @@ builder.Services.AddCors(options =>
 
 var app = builder.Build();
 
-// Configure the HTTP request pipeline
-if (app.Environment.IsDevelopment())
+// Enable Swagger always (you can conditionally hide it if needed)
+app.UseSwagger();
+app.UseSwaggerUI();
+
+// Disable HTTPS redirection on Render (Render provides HTTPS)
+if (!app.Environment.IsDevelopment())
 {
-    app.UseSwagger();
-    app.UseSwaggerUI();
+    // Do NOT call `app.UseHttpsRedirection();`
 }
 
-app.UseHttpsRedirection();
 app.UseCors("AllowReactApp");
 app.UseAuthorization();
 
-// Configure Hangfire Dashboard
+// Hangfire Dashboard
 app.UseHangfireDashboard("/hangfire", new DashboardOptions
 {
     Authorization = new[] { new HangfireAuthorizationFilter() }
@@ -96,7 +106,7 @@ app.UseHangfireDashboard("/hangfire", new DashboardOptions
 
 app.MapControllers();
 
-// Ensure database is created
+// Ensure DB is created
 using (var scope = app.Services.CreateScope())
 {
     var context = scope.ServiceProvider.GetRequiredService<ApplicationDbContext>();
