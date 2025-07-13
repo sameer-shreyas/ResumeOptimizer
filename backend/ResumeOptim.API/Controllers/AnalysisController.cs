@@ -154,4 +154,12 @@ public class AnalysisController : ControllerBase
             return StatusCode(500, new { error = "Error retrieving session reports" });
         }
     }
+
+    [HttpGet("/health")]
+    public IActionResult Health()
+    {
+        _logger.LogInformation("Health check hit at {Time}", DateTime.UtcNow);
+        return Ok(new { status = "healthy" });
+    }
+
 }
