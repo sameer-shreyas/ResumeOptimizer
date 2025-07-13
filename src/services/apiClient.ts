@@ -1,5 +1,5 @@
 // API client for backend communication
-const API_BASE_URL = import.meta.env.VITE_API_URL || 'https://localhost:59919';
+const API_BASE_URL = import.meta.env.VITE_API_URL || 'https://resumeoptimizer-yvnv.onrender.com';
 
 export interface ApiResponse<T> {
   data?: T;
