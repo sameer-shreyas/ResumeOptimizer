@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { ChevronDown, ChevronUp, CheckCircle, AlertTriangle, XCircle, Download, FileText, Target, Zap } from 'lucide-react';
+import { ChevronDown, ChevronUp, CheckCircle, AlertTriangle, XCircle, Download, FileText, Target, Zap, Loader } from 'lucide-react';
 import CircularProgress from './CircularProgress';
 
 interface Suggestion {
@@ -16,7 +16,8 @@ interface AnalysisResultsProps {
   suggestions: Suggestion[];
   keywordMatches: string[];
   missingKeywords: string[];
-  fileName: string;
+    fileName: string;
+    isSaving?: boolean;
   onSaveReport: () => void;
 }
 
@@ -25,7 +26,8 @@ const AnalysisResults: React.FC<AnalysisResultsProps> = ({
   suggestions,
   keywordMatches,
   missingKeywords,
-  fileName,
+    fileName,
+    isSaving,
   onSaveReport
 }) => {
   const [expandedSuggestions, setExpandedSuggestions] = useState<string[]>([]);
@@ -67,13 +69,20 @@ const AnalysisResults: React.FC<AnalysisResultsProps> = ({
           <FileText className="h-6 w-6 text-blue-600" />
           <h2 className="text-xl font-bold text-gray-900">Analysis Results</h2>
         </div>
-        <button
-          onClick={onSaveReport}
-          className="flex items-center space-x-2 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors"
-        >
-          <Download className="h-4 w-4" />
-          <span>Save Report</span>
-        </button>
+              <button
+                  onClick={onSaveReport}
+                  disabled={isSaving}
+                  className="flex items-center space-x-2 bg-blue-600 text-white px-4 py-2 rounded-md hover:bg-blue-700 transition-colors disabled:bg-gray-400"
+              >
+                  {isSaving ? (
+                      <span className="flex items-center">
+                          <Loader className="h-4 w-4 mr-2 animate-spin" />
+                          Generating PDF...
+                      </span>
+                  ) : (
+                      'Save Report as PDF'
+                  )}
+              </button>
       </div>
 
       {/* Score Overview */}

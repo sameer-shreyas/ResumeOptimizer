@@ -1,4 +1,6 @@
+using ResumeOptim.API.DTOs;
 using System.ComponentModel.DataAnnotations;
+using System.Text.Json;
 
 namespace ResumeOptim.API.Models;
 
@@ -18,6 +20,36 @@ public class AnalysisReport
     // Navigation properties
     public Guid FileId { get; set; }
     public UploadedFile UploadedFile { get; set; } = null!;
+
+    public void SetSuggestions(List<SuggestionDto> suggestions)
+    {
+        Suggestions = JsonSerializer.Serialize(suggestions);
+    }
+
+    public List<SuggestionDto> GetSuggestions()
+    {
+        return JsonSerializer.Deserialize<List<SuggestionDto>>(Suggestions) ?? new List<SuggestionDto>();
+    }
+
+    public void SetKeywordMatches(List<string> keywords)
+    {
+        KeywordMatches = JsonSerializer.Serialize(keywords);
+    }
+
+    public List<string> GetKeywordMatches()
+    {
+        return JsonSerializer.Deserialize<List<string>>(KeywordMatches) ?? new List<string>();
+    }
+
+    public void SetMissingKeywords(List<string> keywords)
+    {
+        MissingKeywords = JsonSerializer.Serialize(keywords);
+    }
+
+    public List<string> GetMissingKeywords()
+    {
+        return JsonSerializer.Deserialize<List<string>>(MissingKeywords) ?? new List<string>();
+    }
 }
 
 public class UploadedFile

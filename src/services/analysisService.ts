@@ -169,3 +169,8 @@ export const checkBackendHealth = async (): Promise<boolean> => {
     return false;
   }
 };
+
+export const downloadReportPdf = async (reportId: string) => {
+    const blob = await apiClient.downloadReportPdf(reportId);
+    return blob;
+};

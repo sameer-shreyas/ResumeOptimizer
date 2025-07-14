@@ -93,12 +93,14 @@ public class AnalysisService : IAnalysisService
             {
                 Id = Guid.NewGuid(),
                 Score = aiResponse.Score,
-                Suggestions = JsonSerializer.Serialize(aiResponse.Suggestions),
-                KeywordMatches = JsonSerializer.Serialize(aiResponse.KeywordMatches),
-                MissingKeywords = JsonSerializer.Serialize(aiResponse.MissingKeywords),
                 JobDescription = fileData.JobDescription,
-                FileId = uploadedFile.Id
+                FileId = uploadedFile.Id,
+                CreatedAt = DateTime.UtcNow,
             };
+
+            analysisReport.SetSuggestions(aiResponse.Suggestions);
+            analysisReport.SetKeywordMatches(aiResponse.KeywordMatches);
+            analysisReport.SetMissingKeywords(aiResponse.MissingKeywords);
 
             _context.AnalysisReports.Add(analysisReport);
             await _context.SaveChangesAsync();
@@ -134,6 +136,12 @@ public class AnalysisService : IAnalysisService
             FileName = report.UploadedFile.FileName,
             CreatedAt = report.CreatedAt
         };
+    }
+    public async Task<AnalysisReport> GetReportModelAsync(Guid reportId)
+    {
+        return await _context.AnalysisReports
+            .Include(r => r.UploadedFile)
+            .FirstOrDefaultAsync(r => r.Id == reportId);
     }
 
     public async Task<List<AnalysisResponseDto>> GetSessionReportsAsync(string sessionId)

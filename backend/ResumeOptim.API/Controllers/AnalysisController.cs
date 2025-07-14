@@ -14,17 +14,20 @@ public class AnalysisController : ControllerBase
     private readonly IFileProcessingService _fileProcessingService;
     private readonly IValidator<AnalysisRequestDto> _validator;
     private readonly ILogger<AnalysisController> _logger;
+    private readonly IPdfService _pdfService;
 
     public AnalysisController(
         IAnalysisService analysisService,
         IFileProcessingService fileProcessingService,
         IValidator<AnalysisRequestDto> validator,
-        ILogger<AnalysisController> logger)
+        ILogger<AnalysisController> logger,
+        IPdfService pdfService)
     {
         _analysisService = analysisService;
         _fileProcessingService = fileProcessingService;
         _validator = validator;
         _logger = logger;
+        _pdfService = pdfService;
     }
 
     [HttpPost("upload")]
@@ -162,4 +165,29 @@ public class AnalysisController : ControllerBase
         return Ok(new { status = "healthy" });
     }
 
+    [HttpGet("report/{reportId:guid}/pdf")]
+    public async Task<IActionResult> DownloadPdfReport(Guid reportId)
+    {
+        try
+        {
+            var report = await _analysisService.GetReportModelAsync(reportId);
+            if (report == null)
+            {
+                return NotFound(new { error = "Report not found" });
+            }
+
+            var pdfBytes = _pdfService.GenerateReportPdf(report);
+
+            var fileName = $"ResumeAnalysis_" +
+                          $"{report.UploadedFile?.FileName?.Replace(" ", "_") ?? "report"}_" +
+                          $"{DateTime.UtcNow:yyyyMMdd}.pdf";
+
+            return File(pdfBytes, "application/pdf", fileName);
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "PDF generation failed for report: {ReportId}", reportId);
+            return StatusCode(500, new { error = "PDF generation failed" });
+        }
+    }
 }

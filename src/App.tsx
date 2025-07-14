@@ -6,7 +6,7 @@ import AnalysisResults from './components/AnalysisResults';
 import AnalysisProgress from './components/AnalysisProgress';
 import BackendStatus from './components/BackendStatus';
 import EnhancedApp from './components/EnhancedApp';
-import { analyzeResume, AnalysisResult, AnalysisProgress as AnalysisProgressType } from './services/analysisService';
+import { analyzeResume, AnalysisResult, AnalysisProgress as AnalysisProgressType, downloadReportPdf } from './services/analysisService';
 import { Play, Sparkles, CheckCircle, Settings } from 'lucide-react';
 
 function App() {
@@ -55,14 +55,35 @@ function App() {
     }
   };
 
-  const handleSaveReport = () => {
-    if (analysisResult?.reportId) {
-      // In a real implementation, this would trigger a PDF download
-      alert(`Report ${analysisResult.reportId} saved! (PDF download would start here)`);
-    } else {
-      alert('No report available to save');
-    }
-  };
+    const handleSaveReport = async () => {
+        if (!analysisResult?.reportId) {
+            alert('No report available to save');
+            return;
+        }
+
+        try {
+            setIsAnalyzing(true);
+            const pdfBlob = await downloadReportPdf(analysisResult.reportId);
+
+            const filename = `ResumeAnalysis_${analysisResult.fileName?.replace(/\.[^/.]+$/, "") || "report"
+                }_${new Date().toISOString().slice(0, 10)}.pdf`;
+
+            // Trigger download
+            const url = window.URL.createObjectURL(pdfBlob);
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = filename;
+            document.body.appendChild(a);
+            a.click();
+            window.URL.revokeObjectURL(url);
+            document.body.removeChild(a);
+        } catch (error) {
+            console.error('Failed to save report:', error);
+            setError('Failed to download PDF. Please try again.');
+        } finally {
+            setIsAnalyzing(false);
+        }
+    };
 
   const handleRetry = () => {
     setError(null);
@@ -246,7 +267,8 @@ function App() {
               keywordMatches={analysisResult.keywordMatches}
               missingKeywords={analysisResult.missingKeywords}
               fileName={analysisResult.fileName || uploadedFile?.name || 'resume.pdf'}
-              onSaveReport={handleSaveReport}
+                onSaveReport={handleSaveReport}
+                isSaving={isAnalyzing}
             />
           </div>
         ) : null}

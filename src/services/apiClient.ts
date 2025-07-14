@@ -141,7 +141,17 @@ class ApiClient {
 
   async checkHealth(): Promise<ApiResponse<{ status: string }>> {
     return this.makeRequest<{ status: string }>('/health');
-  }
+    }
+
+    async downloadReportPdf(reportId: string): Promise<Blob> {
+        const response = await fetch(`${this.baseUrl}/api/analysis/report/${reportId}/pdf`);
+
+        if (!response.ok) {
+            const errorText = await response.text();
+            throw new Error(`PDF download failed: ${errorText}`);
+        }
+        return await response.blob();
+    }
 }
 
 export const apiClient = new ApiClient();

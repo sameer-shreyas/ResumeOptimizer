@@ -60,6 +60,7 @@ builder.Services.AddScoped<IFileProcessingService, FileProcessingService>();
 builder.Services.AddScoped<IAnalysisService, AnalysisService>();
 builder.Services.AddScoped<IBlobStorageService, BlobStorageService>();
 builder.Services.AddScoped<ICacheService, CacheService>();
+builder.Services.AddScoped<IPdfService, PdfService>();
 
 builder.Services.AddHttpClient<IAIAnalysisClient, AIAnalysisClient>(client =>
 {
