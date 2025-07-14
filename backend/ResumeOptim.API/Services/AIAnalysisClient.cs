@@ -24,21 +24,40 @@ public class AIAnalysisClient : IAIAnalysisClient
     public async Task<AIAnalysisResponse> AnalyzeWithCerebras(AIAnalysisRequest request)
     {
         const string SYSTEM_PROMPT = """
-        Return EXACTLY this JSON structure (single object, no wrapping array):
-        {
-            "Score": 0-100,
-            "Suggestions": [{
-                "Type": "...", 
-                "Title": "...", 
-                "Description": "...", 
-                "Example": "...", 
-                "Impact": "..."
-            }],
-            "KeywordMatches": ["...", "..."],
-            "MissingKeywords": ["...", "..."]
-        }
-        """;
+        Act as a strict Applicant Tracking System (ATS) scanner. Analyze the resume against the job description using these criteria:
+        1. **Hard Skills Match** (40% weight): Count exact matches of required technical skills/tools
+        2. **Experience Relevance** (30% weight): Verify years of experience in required domains
+        3. **Qualifications** (20% weight): Certifications/degrees matching requirements
+        4. **Keyword Optimization** (10% weight): Resume keyword density and placement
 
+        **Scoring Rules:**
+        - Start at 50 points (minimum passing score)
+        - Add points for matches (max +50)
+        - Deduct points for missing requirements (max -50)
+        - Round final score to nearest integer
+
+        **Response Requirements:**
+        - Return EXACTLY this JSON structure:
+        {
+            "Score": 0-100, 
+            "Suggestions": [{
+                "Type": "Critical|Moderate|Minor", 
+                "Title": "Specific issue title", 
+                "Description": "Actionable improvement", 
+                "Example": "Concrete revision example",
+                "Impact": "+X points if fixed"
+            }],
+            "KeywordMatches": ["exact matched terms"],
+            "MissingKeywords": ["required terms absent from resume"]
+        }
+
+        **Strict Instructions:**
+        1. Never suggest adding skills not mentioned in JD
+        2. Flag resume padding attempts
+        3. Prioritize suggestions by score impact
+        4. Include only JD-specified keywords
+        5. Treat similar terms as mismatches (e.g., "Azure" ? "AWS")
+        """;
         var cerebrasRequest = new CerebrasRequest
         {
             Model = "llama-4-scout-17b-16e-instruct",
