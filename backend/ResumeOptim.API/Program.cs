@@ -63,9 +63,9 @@ builder.Services.AddStackExchangeRedisCache(options =>
     options.Configuration = builder.Configuration.GetConnectionString("Redis");
 });
 
-// Azure Blob Storage
-builder.Services.Configure<AzureBlobStorageOptions>(
-    builder.Configuration.GetSection("AzureBlobStorage"));
+// Cloudflare R2 Storage
+builder.Services.Configure<CloudflareR2Options>(
+    builder.Configuration.GetSection("CloudflareR2"));
 
 // Register services
 builder.Services.AddScoped<IFileProcessingService, FileProcessingService>();

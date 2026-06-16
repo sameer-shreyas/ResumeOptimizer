@@ -1,5 +1,5 @@
-using Azure.Storage.Blobs;
-using Azure.Storage.Blobs.Models;
+using Amazon.S3;
+using Amazon.S3.Model;
 using Microsoft.Extensions.Options;
 using ResumeOptim.API.Configuration;
 
@@ -7,44 +7,46 @@ namespace ResumeOptim.API.Services;
 
 public class BlobStorageService : IBlobStorageService
 {
-    private readonly BlobServiceClient _blobServiceClient;
-    private readonly AzureBlobStorageOptions _options;
+    private readonly AmazonS3Client _s3Client;
+    private readonly CloudflareR2Options _options;
     private readonly ILogger<BlobStorageService> _logger;
 
-    public BlobStorageService(IOptions<AzureBlobStorageOptions> options, ILogger<BlobStorageService> logger)
+    public BlobStorageService(IOptions<CloudflareR2Options> options, ILogger<BlobStorageService> logger)
     {
         _options = options.Value;
-        _blobServiceClient = new BlobServiceClient(_options.ConnectionString);
         _logger = logger;
+
+        var config = new AmazonS3Config
+        {
+            ServiceURL = $"https://{_options.AccountId}.r2.cloudflarestorage.com",
+            ForcePathStyle = true
+        };
+
+        _s3Client = new AmazonS3Client(_options.AccessKeyId, _options.SecretAccessKey, config);
     }
 
     public async Task<string> UploadFileAsync(IFormFile file, string sessionId)
     {
         try
         {
-            var containerClient = _blobServiceClient.GetBlobContainerClient(_options.ContainerName);
-            await containerClient.CreateIfNotExistsAsync(PublicAccessType.None);
+            var key = $"{sessionId}/{Guid.NewGuid()}_{file.FileName}";
 
-            var fileName = $"{sessionId}/{Guid.NewGuid()}_{file.FileName}";
-            var blobClient = containerClient.GetBlobClient(fileName);
-
-            var blobHttpHeaders = new BlobHttpHeaders
+            using var stream = file.OpenReadStream();
+            var request = new PutObjectRequest
             {
+                BucketName = _options.BucketName,
+                Key = key,
+                InputStream = stream,
                 ContentType = file.ContentType
             };
 
-            using var stream = file.OpenReadStream();
-            await blobClient.UploadAsync(stream, new BlobUploadOptions
-            {
-                HttpHeaders = blobHttpHeaders
-            });
-
-            _logger.LogInformation("File uploaded to blob storage: {FileName}", fileName);
-            return fileName;
+            await _s3Client.PutObjectAsync(request);
+            _logger.LogInformation("File uploaded to R2: {Key}", key);
+            return key;
         }
         catch (Exception ex)
         {
-            _logger.LogError(ex, "Error uploading file to blob storage");
+            _logger.LogError(ex, "Error uploading file to R2");
             throw;
         }
     }
@@ -53,15 +55,18 @@ public class BlobStorageService : IBlobStorageService
     {
         try
         {
-            var containerClient = _blobServiceClient.GetBlobContainerClient(_options.ContainerName);
-            var blobClient = containerClient.GetBlobClient(blobPath);
+            var request = new GetObjectRequest
+            {
+                BucketName = _options.BucketName,
+                Key = blobPath
+            };
 
-            var response = await blobClient.DownloadStreamingAsync();
-            return response.Value.Content;
+            var response = await _s3Client.GetObjectAsync(request);
+            return response.ResponseStream;
         }
         catch (Exception ex)
         {
-            _logger.LogError(ex, "Error downloading file from blob storage: {BlobPath}", blobPath);
+            _logger.LogError(ex, "Error downloading file from R2: {BlobPath}", blobPath);
             throw;
         }
     }
@@ -70,15 +75,18 @@ public class BlobStorageService : IBlobStorageService
     {
         try
         {
-            var containerClient = _blobServiceClient.GetBlobContainerClient(_options.ContainerName);
-            var blobClient = containerClient.GetBlobClient(blobPath);
+            var request = new DeleteObjectRequest
+            {
+                BucketName = _options.BucketName,
+                Key = blobPath
+            };
 
-            var response = await blobClient.DeleteIfExistsAsync();
-            return response.Value;
+            await _s3Client.DeleteObjectAsync(request);
+            return true;
         }
         catch (Exception ex)
         {
-            _logger.LogError(ex, "Error deleting file from blob storage: {BlobPath}", blobPath);
+            _logger.LogError(ex, "Error deleting file from R2: {BlobPath}", blobPath);
             return false;
         }
     }
