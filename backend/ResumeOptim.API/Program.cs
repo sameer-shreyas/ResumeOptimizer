@@ -1,5 +1,6 @@
 using FluentValidation;
 using Hangfire;
+using Hangfire.PostgreSql;
 using Microsoft.EntityFrameworkCore;
 using ResumeOptim.API.Configuration;
 using ResumeOptim.API.Data;
@@ -22,6 +23,16 @@ builder.Host.UseSerilog();
 
 // Get Render's dynamic PORT or default to 5000 locally
 var port = Environment.GetEnvironmentVariable("PORT") ?? "5000";
+
+// Render injects DATABASE_URL as postgres://user:pass@host:port/db — convert to Npgsql format
+static string GetPostgresConnectionString(string fallback)
+{
+    var url = Environment.GetEnvironmentVariable("DATABASE_URL");
+    if (url is null) return fallback;
+    var uri = new Uri(url);
+    var userInfo = uri.UserInfo.Split(':');
+    return $"Host={uri.Host};Port={uri.Port};Database={uri.AbsolutePath.TrimStart('/')};Username={userInfo[0]};Password={Uri.UnescapeDataString(userInfo[1])};SSL Mode=Require;Trust Server Certificate=true";
+}
 builder.WebHost.ConfigureKestrel(options =>
 {
     options.ListenAnyIP(Int32.Parse(port));
@@ -34,14 +45,14 @@ builder.Services.AddSwaggerGen();
 
 // EF Core
 builder.Services.AddDbContext<ApplicationDbContext>(options =>
-    options.UseSqlServer(builder.Configuration.GetConnectionString("DefaultConnection")));
+    options.UseNpgsql(GetPostgresConnectionString(builder.Configuration.GetConnectionString("DefaultConnection")!)));
 
 // Hangfire
 builder.Services.AddHangfire(configuration => configuration
     .SetDataCompatibilityLevel(CompatibilityLevel.Version_180)
     .UseSimpleAssemblyNameTypeSerializer()
     .UseRecommendedSerializerSettings()
-    .UseSqlServerStorage(builder.Configuration.GetConnectionString("HangfireConnection")));
+    .UsePostgreSqlStorage(c => c.UseNpgsqlConnection(GetPostgresConnectionString(builder.Configuration.GetConnectionString("HangfireConnection")!))));
 
 builder.Services.AddHangfireServer();
 
