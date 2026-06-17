@@ -37,7 +37,8 @@ public class BlobStorageService : IBlobStorageService
                 BucketName = _options.BucketName,
                 Key = key,
                 InputStream = stream,
-                ContentType = file.ContentType
+                ContentType = file.ContentType,
+                UseChunkedEncoding = false
             };
 
             await _s3Client.PutObjectAsync(request);
