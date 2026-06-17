@@ -60,7 +60,7 @@ public class AIAnalysisClient : IAIAnalysisClient
         """;
         var cerebrasRequest = new CerebrasRequest
         {
-            Model = "llama-4-scout-17b-16e-instruct",
+            Model = "gpt-oss-120b",
             Messages = new List<ChatMessage>
         {
             new() { Role = "system", Content = SYSTEM_PROMPT },
@@ -84,7 +84,12 @@ public class AIAnalysisClient : IAIAnalysisClient
 
         var response = await _httpClient.SendAsync(httpRequest);
 
-        response.EnsureSuccessStatusCode();
+        if (!response.IsSuccessStatusCode)
+        {
+            var errorBody = await response.Content.ReadAsStringAsync();
+            _logger.LogError("Cerebras API error {Status}: {Body}", (int)response.StatusCode, errorBody);
+            response.EnsureSuccessStatusCode();
+        }
 
         var responseJson = await response.Content.ReadAsStringAsync();
         var cerebrasResponse = JsonSerializer.Deserialize<CerebrasResponse>(responseJson);

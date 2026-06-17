@@ -10,16 +10,19 @@ public class BlobStorageService : IBlobStorageService
     private readonly AmazonS3Client _s3Client;
     private readonly CloudflareR2Options _options;
     private readonly ILogger<BlobStorageService> _logger;
+    private readonly HttpClient _httpClient;
 
-    public BlobStorageService(IOptions<CloudflareR2Options> options, ILogger<BlobStorageService> logger)
+    public BlobStorageService(IOptions<CloudflareR2Options> options, ILogger<BlobStorageService> logger, IHttpClientFactory httpClientFactory)
     {
         _options = options.Value;
         _logger = logger;
+        _httpClient = httpClientFactory.CreateClient();
 
         var config = new AmazonS3Config
         {
             ServiceURL = $"https://{_options.AccountId}.r2.cloudflarestorage.com",
-            ForcePathStyle = true
+            ForcePathStyle = true,
+            AuthenticationRegion = "auto"
         };
 
         _s3Client = new AmazonS3Client(_options.AccessKeyId, _options.SecretAccessKey, config);
@@ -31,19 +34,21 @@ public class BlobStorageService : IBlobStorageService
         {
             var key = $"{sessionId}/{Guid.NewGuid()}_{file.FileName}";
 
-            using var ms = new MemoryStream();
-            await file.CopyToAsync(ms);
-            ms.Position = 0;
-
-            var request = new PutObjectRequest
+            var presignedUrl = _s3Client.GetPreSignedURL(new GetPreSignedUrlRequest
             {
                 BucketName = _options.BucketName,
                 Key = key,
-                InputStream = ms,
-                ContentType = file.ContentType
-            };
+                Verb = HttpVerb.PUT,
+                Expires = DateTime.UtcNow.AddMinutes(5)
+            });
 
-            await _s3Client.PutObjectAsync(request);
+            using var ms = new MemoryStream();
+            await file.CopyToAsync(ms);
+
+            using var content = new ByteArrayContent(ms.ToArray());
+            var response = await _httpClient.PutAsync(presignedUrl, content);
+            response.EnsureSuccessStatusCode();
+
             _logger.LogInformation("File uploaded to R2: {Key}", key);
             return key;
         }
@@ -58,13 +63,11 @@ public class BlobStorageService : IBlobStorageService
     {
         try
         {
-            var request = new GetObjectRequest
+            var response = await _s3Client.GetObjectAsync(new GetObjectRequest
             {
                 BucketName = _options.BucketName,
                 Key = blobPath
-            };
-
-            var response = await _s3Client.GetObjectAsync(request);
+            });
             return response.ResponseStream;
         }
         catch (Exception ex)
@@ -78,13 +81,11 @@ public class BlobStorageService : IBlobStorageService
     {
         try
         {
-            var request = new DeleteObjectRequest
+            await _s3Client.DeleteObjectAsync(new DeleteObjectRequest
             {
                 BucketName = _options.BucketName,
                 Key = blobPath
-            };
-
-            await _s3Client.DeleteObjectAsync(request);
+            });
             return true;
         }
         catch (Exception ex)
