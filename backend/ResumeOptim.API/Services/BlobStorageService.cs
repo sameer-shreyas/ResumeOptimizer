@@ -19,7 +19,8 @@ public class BlobStorageService : IBlobStorageService
         var config = new AmazonS3Config
         {
             ServiceURL = $"https://{_options.AccountId}.r2.cloudflarestorage.com",
-            ForcePathStyle = true
+            ForcePathStyle = true,
+            UseChunkedEncoding = false
         };
 
         _s3Client = new AmazonS3Client(_options.AccessKeyId, _options.SecretAccessKey, config);
@@ -37,8 +38,7 @@ public class BlobStorageService : IBlobStorageService
                 BucketName = _options.BucketName,
                 Key = key,
                 InputStream = stream,
-                ContentType = file.ContentType,
-                UseChunkedEncoding = false
+                ContentType = file.ContentType
             };
 
             await _s3Client.PutObjectAsync(request);
